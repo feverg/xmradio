@@ -22,6 +22,7 @@
 
 #define DEFAULT_TIMEOUT	600
 #define DEFAULT_SPEED	5
+#define PAUSE_TIMEOUT	1500
 
 G_DEFINE_TYPE(XmrLabel, xmr_label, GTK_TYPE_MISC);
 
@@ -69,6 +70,14 @@ hscroll_text_timeout(XmrLabel *label)
 	gtk_widget_queue_draw(GTK_WIDGET(label));
 
 	return TRUE;
+}
+
+static gboolean
+pause_timeout(XmrLabel *label)
+{
+	label->priv->timeout_id = g_timeout_add(DEFAULT_TIMEOUT, (GSourceFunc)hscroll_text_timeout, label);
+
+	return FALSE;
 }
 
 static void
@@ -230,10 +239,22 @@ xmr_label_draw(GtkWidget *widget, cairo_t *cr)
 	if ((priv->current_x + width) <= allocation.width - 5)
 	{
 		priv->direction_x = RIGHT;
+		if (priv->timeout_id > 0)
+		{
+			g_source_remove(priv->timeout_id);
+			g_timeout_add(PAUSE_TIMEOUT, (GSourceFunc)pause_timeout, label);
+			priv->timeout_id = 0;
+		}
 	}
 	else if(priv->current_x >= 5)
 	{
 		priv->direction_x = LEFT;
+		if (priv->timeout_id > 0)
+		{
+			g_source_remove(priv->timeout_id);
+			g_timeout_add(PAUSE_TIMEOUT, (GSourceFunc)pause_timeout, label);
+			priv->timeout_id = 0;
+		}
 	}
 
 	cairo_move_to(cr, priv->current_x, (allocation.height - height) / 2);
